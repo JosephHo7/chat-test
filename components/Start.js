@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        padding: 5
+        padding: 5,
     },
     customButton: {
         width: '88%',
