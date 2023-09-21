@@ -2,47 +2,48 @@
 import { StyleSheet, View, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { useEffect, useState } from "react";
 import { GiftedChat, Bubble } from "react-native-gifted-chat";
+import { onSnapshot, query, collection, where, orderBy, Timestamp, addDoc } from "firebase/firestore";
 
-const Chat = ({route, navigation}) => {
+const Chat = ({route, navigation, db}) => {
     // get name and background color from start page
-    const { name, color } = route.params;
+    const { name, color, userID } = route.params;
 
     // messges state to add and display messages
     const [messages, setMessages] = useState([]);
 
-    // display the first message when user gets to the chat page
+    // display the messages when user gets to the chat page
     useEffect(() => {
-        setMessages([
-            {
-                id: 1,
-                text: 'Hello developer',
-                createdAt: new Date(),
-                user: {
-                  _id: 2,
-                  name: 'React Native',
-                  avatar: 'https://placeimg.com/140/140/any',
+    // set user input name to the title of the screen 
+        navigation.setOptions({title: name})
+
+        const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
+        const unsubChat = onSnapshot(q, (messageSnapshot) => {
+            let newMessages = [];
+            messageSnapshot.forEach((doc) => {
+                const data = doc.data();
+                //convert timestamp to date
+                const createdAt = data.createdAt.toDate();
+
+                const message = {
+                    id: doc.id,
+                    ...data,
+                    createdAt
                 }
-            },
-            {
-                _id: 1,
-                text: 'You have now joined the chat',
-                createdAt: new Date(),
-                system: true
-              }
-        ])
+                newMessages.push(message)
+            });
+            setMessages(newMessages);
+        });
+
+    // clean up code
+        return() => {
+            if (unsubChat) unsubChat();
+        }
     },[])
 
     // add new messages to the setMessages state array 
-    const onSend = ((newMessages) => {
-        setMessages(previousMessages =>
-          GiftedChat.append(previousMessages, newMessages),
-        )
-      })
-
-    // set user input name to the title of the screen 
-    useEffect(() => {
-        navigation.setOptions({title: name})
-    }, []);
+    const onSend = (newMessages) => {
+        addDoc(collection(db, 'messages'), newMessages[0])
+    }
 
     const renderBubble = (props) => {
         return <Bubble
@@ -63,7 +64,8 @@ const Chat = ({route, navigation}) => {
                 renderBubble={renderBubble}
                 onSend={messages => onSend(messages)}
                 user={{
-                    _id: 1
+                    _id: userID,
+                    name: name
                 }}
                 />
 {/* adjusts keyboard view so user can see the message as they type */}
