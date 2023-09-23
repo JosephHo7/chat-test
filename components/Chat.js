@@ -1,23 +1,26 @@
 //components/Chat.js
 import { StyleSheet, View, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { useEffect, useState } from "react";
-import { GiftedChat, Bubble } from "react-native-gifted-chat";
+import { GiftedChat, Bubble, InputToolbar } from "react-native-gifted-chat";
 import { onSnapshot, query, collection, where, orderBy, Timestamp, addDoc } from "firebase/firestore";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const Chat = ({route, navigation, db}) => {
+const Chat = ({route, navigation, db, isConnected}) => {
     // get name and background color from start page
     const { name, color, userID } = route.params;
 
     // messges state to add and display messages
     const [messages, setMessages] = useState([]);
 
-    // display the messages when user gets to the chat page
+    let unsubChat;
+        // display the messages when user gets to the chat page
     useEffect(() => {
-    // set user input name to the title of the screen 
+        // set user input name to the title of the screen 
         navigation.setOptions({title: name})
 
+        if (isConnected === true) {       
         const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'));
-        const unsubChat = onSnapshot(q, (messageSnapshot) => {
+        unsubChat = onSnapshot(q, (messageSnapshot) => {
             let newMessages = [];
             messageSnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -31,20 +34,36 @@ const Chat = ({route, navigation, db}) => {
                 }
                 newMessages.push(message)
             });
+            cacheMessages(newMessages);
             setMessages(newMessages);
-        });
+        })} else {
+            loadFromCache();
+        }
 
     // clean up code
         return() => {
             if (unsubChat) unsubChat();
         }
-    },[])
+    },[isConnected]);
+
+    // saves messages to the cache 
+    const cacheMessages = async(messagesToCache) => {
+        try { await AsyncStorage.setItem('messages', JSON.stringify(messagesToCache));}
+        catch(error) {console.log(error.message)}
+    }
+
+    // load messages from Async Storage rather than Firestore db
+    const loadFromCache = async () => {
+        const messagesFromCache = await AsyncStorage.getItem('messages') || [];
+        setMessages(JSON.parse(messagesFromCache));
+    }
 
     // add new messages to the setMessages state array 
     const onSend = (newMessages) => {
         addDoc(collection(db, 'messages'), newMessages[0])
     }
 
+    // change render bubble styling
     const renderBubble = (props) => {
         return <Bubble
             {...props}
@@ -55,6 +74,14 @@ const Chat = ({route, navigation, db}) => {
         /> 
     }
 
+    const renderInputToolbar = (props) => {
+        if (isConnected)
+            return <InputToolbar 
+            {...props} 
+            />; 
+        else return null; 
+    }
+
     return(
         <View 
 // set selected background color 
@@ -62,6 +89,7 @@ const Chat = ({route, navigation, db}) => {
                 <GiftedChat
                 messages={messages}
                 renderBubble={renderBubble}
+                renderInputToolbar={renderInputToolbar}
                 onSend={messages => onSend(messages)}
                 user={{
                     _id: userID,
