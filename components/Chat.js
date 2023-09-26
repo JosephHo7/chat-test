@@ -1,9 +1,10 @@
 //components/Chat.js
 import { StyleSheet, View, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { useEffect, useState } from "react";
-import { GiftedChat, Bubble, InputToolbar } from "react-native-gifted-chat";
+import { GiftedChat, Bubble, InputToolbar, Actions } from "react-native-gifted-chat";
 import { onSnapshot, query, collection, where, orderBy, Timestamp, addDoc } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomActions from "./CustomActions";
 
 const Chat = ({route, navigation, db, isConnected}) => {
     // get name and background color from start page
@@ -82,6 +83,10 @@ const Chat = ({route, navigation, db, isConnected}) => {
         else return null; 
     }
 
+    const renderCustomActions = (props) => {
+        return <CustomActions {...props}/>
+    };
+
     return(
         <View 
 // set selected background color 
@@ -90,6 +95,7 @@ const Chat = ({route, navigation, db, isConnected}) => {
                 messages={messages}
                 renderBubble={renderBubble}
                 renderInputToolbar={renderInputToolbar}
+                renderActions={renderCustomActions}
                 onSend={messages => onSend(messages)}
                 user={{
                     _id: userID,
