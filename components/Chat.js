@@ -2,11 +2,12 @@
 import { StyleSheet, View, Text, KeyboardAvoidingView, Platform } from "react-native";
 import { useEffect, useState } from "react";
 import { GiftedChat, Bubble, InputToolbar, Actions } from "react-native-gifted-chat";
+import MapView from "react-native-maps";
 import { onSnapshot, query, collection, where, orderBy, Timestamp, addDoc } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomActions from "./CustomActions";
 
-const Chat = ({route, navigation, db, isConnected}) => {
+const Chat = ({route, navigation, db, isConnected, storage}) => {
     // get name and background color from start page
     const { name, color, userID } = route.params;
 
@@ -31,7 +32,7 @@ const Chat = ({route, navigation, db, isConnected}) => {
                 const message = {
                     id: doc.id,
                     ...data,
-                    createdAt
+                    createdAt,
                 }
                 newMessages.push(message)
             });
@@ -84,8 +85,32 @@ const Chat = ({route, navigation, db, isConnected}) => {
     }
 
     const renderCustomActions = (props) => {
-        return <CustomActions {...props}/>
+        return <CustomActions 
+            storage={storage}
+            userID={userID}
+            {...props}
+            />;
     };
+
+// if the message contains a location, return mapview that shows the location on a map 
+    const renderCustomView = (props) => {
+        const { currentMessage } = props;
+        if (currentMessage.location) {
+            return (<MapView 
+                style={{width: 150, 
+                    height: 100,
+                    borderRadius: 13,
+                    margin: 3}}
+                region={{
+                    latitude: currentMessage.location.latitude,
+                    longitude: currentMessage.location.longitude,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421
+                }}
+            />)
+        }
+        return null;
+    }
 
     return(
         <View 
@@ -96,6 +121,7 @@ const Chat = ({route, navigation, db, isConnected}) => {
                 renderBubble={renderBubble}
                 renderInputToolbar={renderInputToolbar}
                 renderActions={renderCustomActions}
+                renderCustomView={renderCustomView}
                 onSend={messages => onSend(messages)}
                 user={{
                     _id: userID,
